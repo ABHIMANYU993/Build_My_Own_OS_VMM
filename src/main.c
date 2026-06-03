@@ -55,10 +55,38 @@ int main(void) {
     return 1;
   }
   // reding the vcou registors
+  struct kvm_sregs sregs;
+  int ret = ioctl(vcpu_fd, KVM_GET_SREGS, &sregs);
+  struct kvm_regs regs;
+  ioctl(vcpu_fd, KVM_GET_REGS, &regs);
   printf("KVM API version: %d\nKVM_CREATE_VM:%d\nGuest_ram:%p\n"
          "KVM_CREATE_VCPU:%d\n"
          "KVM_SET_USER_MEMORY_REGION:%d\n",
          version, vm_fd, guest_ram, vcpu_fd, mem_region);
+  printf("CR0      = 0x%llx\n", sregs.cr0);
+
+  printf("CS.base  = 0x%llx\n", sregs.cs.base);
+  printf("CS.limit = 0x%x\n", sregs.cs.limit);
+  printf("CS.sel   = 0x%x\n", sregs.cs.selector);
+
+  printf("DS.base  = 0x%llx\n", sregs.ds.base);
+  printf("DS.limit = 0x%x\n", sregs.ds.limit);
+  printf("DS.sel   = 0x%x\n", sregs.ds.selector);
+  printf("RIP = 0x%llx\n", regs.rip);
+  printf("RFLAGS = 0x%llx\n", regs.rflags);
+
+  printf("CR3 = 0x%llx\n", sregs.cr3);
+  printf("CR4 = 0x%llx\n", sregs.cr4);
+  printf("EFER = 0x%llx\n", sregs.efer);
+
+  printf("CS.type     = 0x%x\n", sregs.cs.type);
+  printf("CS.present  = %d\n", sregs.cs.present);
+  printf("CS.db       = %d\n", sregs.cs.db);
+  printf("CS.g        = %d\n", sregs.cs.g);
+  printf("DS.type     = 0x%x\n", sregs.ds.type);
+  printf("DS.present  = %d\n", sregs.ds.present);
+  printf("DS.db       = %d\n", sregs.ds.db);
+  printf("DS.g        = %d\n", sregs.ds.g);
 
   close(kvm_fd);
   return 0;
