@@ -91,11 +91,13 @@ int main(void) {
   // modifyiing sregs to make the cpu to protected mode
 
   sregs.cr0 |= 0x1;
+  sregs.cs.base = 0;
   ioctl(vcpu_fd, KVM_SET_SREGS, &sregs);
-
   struct kvm_sregs verify;
   ioctl(vcpu_fd, KVM_GET_SREGS, &verify);
-  printf("CR0 = 0x%llx\n", verify.cr0);
+  printf("===============modified SREGS and REGS===============\n");
+  printf("CR0      = 0x%llx\n", verify.cr0);
+  printf("CS.base  = 0x%llx\n", verify.cs.base);
 
   close(kvm_fd);
   return 0;
