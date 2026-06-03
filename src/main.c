@@ -92,12 +92,24 @@ int main(void) {
 
   sregs.cr0 |= 0x1;
   sregs.cs.base = 0;
+  sregs.cs.g = 1;
   ioctl(vcpu_fd, KVM_SET_SREGS, &sregs);
   struct kvm_sregs verify;
   ioctl(vcpu_fd, KVM_GET_SREGS, &verify);
   printf("===============modified SREGS and REGS===============\n");
   printf("CR0      = 0x%llx\n", verify.cr0);
   printf("CS.base  = 0x%llx\n", verify.cs.base);
+  printf("CS.limit = 0x%x\n", verify.cs.limit);
+  printf("CS.g     = %d\n", verify.cs.g);
+  // debugging statements
+  // printf("ES.base= 0x%llx\n", sregs.es.base);
+  // printf("FS.base= 0x%llx\n", sregs.fs.base);
+  // printf("GS.base= 0x%llx\n", sregs.gs.base);
+  // printf("SS.base= 0x%llx\n", sregs.ss.base);
+  // printf("ES.sel = 0x%x\n", sregs.es.selector);
+  // printf("FS.sel = 0x%x\n", sregs.fs.selector);
+  // printf("GS.sel = 0x%x\n", sregs.gs.selector);
+  // printf("SS.sel = 0x%x\n", sregs.ss.selector);
 
   close(kvm_fd);
   return 0;
