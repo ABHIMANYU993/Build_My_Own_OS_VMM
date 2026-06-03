@@ -88,6 +88,15 @@ int main(void) {
   printf("DS.db       = %d\n", sregs.ds.db);
   printf("DS.g        = %d\n", sregs.ds.g);
 
+  // modifyiing sregs to make the cpu to protected mode
+
+  sregs.cr0 |= 0x1;
+  ioctl(vcpu_fd, KVM_SET_SREGS, &sregs);
+
+  struct kvm_sregs verify;
+  ioctl(vcpu_fd, KVM_GET_SREGS, &verify);
+  printf("CR0 = 0x%llx\n", verify.cr0);
+
   close(kvm_fd);
   return 0;
 }
