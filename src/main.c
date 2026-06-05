@@ -93,6 +93,8 @@ int main(void) {
   sregs.cr0 |= 0x1;
   sregs.cs.base = 0;
   sregs.cs.g = 1;
+  sregs.cs.db = 1;
+  sregs.cs.limit = 0xFFFFF;
   ioctl(vcpu_fd, KVM_SET_SREGS, &sregs);
   struct kvm_sregs verify;
   ioctl(vcpu_fd, KVM_GET_SREGS, &verify);
@@ -101,6 +103,7 @@ int main(void) {
   printf("CS.base  = 0x%llx\n", verify.cs.base);
   printf("CS.limit = 0x%x\n", verify.cs.limit);
   printf("CS.g     = %d\n", verify.cs.g);
+  printf("CS.db    = %d\n", verify.cs.db);
   // debugging statements
   // printf("ES.base= 0x%llx\n", sregs.es.base);
   // printf("FS.base= 0x%llx\n", sregs.fs.base);
