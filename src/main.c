@@ -5,7 +5,8 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
+#define LIMIT 0xFFFFF
+#define GUEST_MEM 0x08000000
 int main(void) {
   int kvm_fd = open("/dev/kvm", O_RDWR | O_CLOEXEC);
   if (kvm_fd < 0) {
@@ -28,7 +29,7 @@ int main(void) {
     return 1;
   }
   // Pseudo-architecture
-  void *guest_ram = mmap(NULL, 0x08000000, PROT_READ | PROT_WRITE,
+  void *guest_ram = mmap(NULL, GUEST_MEM, PROT_READ | PROT_WRITE,
                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
   // map the guest ram to the vm
@@ -36,7 +37,7 @@ int main(void) {
   region.slot = 0;
   region.flags = 0;
   region.guest_phys_addr = 0x0;
-  region.memory_size = 0x08000000;
+  region.memory_size = GUEST_MEM;
   region.userspace_addr = (uintptr_t)guest_ram;
   int mem_region = ioctl(vm_fd, KVM_SET_USER_MEMORY_REGION, &region);
   if (mem_region < 0) {
@@ -89,12 +90,30 @@ int main(void) {
   printf("DS.g        = %d\n", sregs.ds.g);
 
   // modifyiing sregs to make the cpu to protected mode
-
+  // Mode Switch to protected
   sregs.cr0 |= 0x1;
+
+  // CS(code segment) segment values for making segmentation invisible
   sregs.cs.base = 0;
   sregs.cs.g = 1;
   sregs.cs.db = 1;
-  sregs.cs.limit = 0xFFFFF;
+  sregs.cs.limit = LIMIT;
+
+  // DS(data segment) segment values to match CS
+  sregs.ds.base = 0;
+  sregs.ds.limit = LIMIT;
+  sregs.ds.g = 1;
+
+  // ES(extra segment, think of it like ds is src and es is destination) segment
+  // values to match CS
+  sregs.es.base = 0;
+  sregs.es.limit = LIMIT;
+  sregs.es.g = 1;
+
+  // SS(stack segment) segment values to match CS
+  sregs.ss.base = 0;
+  sregs.ss.limit = LIMIT;
+  sregs.ss.g = 1;
   ioctl(vcpu_fd, KVM_SET_SREGS, &sregs);
   struct kvm_sregs verify;
   ioctl(vcpu_fd, KVM_GET_SREGS, &verify);
@@ -114,6 +133,15 @@ int main(void) {
   // printf("GS.sel = 0x%x\n", sregs.gs.selector);
   // printf("SS.sel = 0x%x\n", sregs.ss.selector);
 
+  printf("DS.base  = 0x%llx\n", verify.ds.base);
+  printf("DS.limit = 0x%x\n", verify.ds.limit);
+  printf("DS.g     = %d\n", verify.ds.g);
+  printf("ES.base  = 0x%llx\n", verify.es.base);
+  printf("ES.limit = 0x%x\n", verify.es.limit);
+  printf("ES.g     = %d\n", verify.es.g);
+  printf("SS.base  = 0x%llx\n", verify.ss.base);
+  printf("SS.limit = 0x%x\n", verify.ss.limit);
+  printf("SS.g     = %d\n", verify.ss.g);
   close(kvm_fd);
   return 0;
 }
