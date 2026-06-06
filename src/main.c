@@ -178,6 +178,7 @@ int main(void) {
   // DS(data segment) segment values to match CS
   sregs.ds.base = 0;
   sregs.ds.limit = LIMIT;
+  sregs.ds.db = 1;
   sregs.ds.g = 1;
   sregs.ds.selector = DS_SELECTOR;
   sregs.ds.type = 0x3;
@@ -189,6 +190,7 @@ int main(void) {
   // values to match CS
   sregs.es.base = 0;
   sregs.es.limit = LIMIT;
+  sregs.es.db = 1;
   sregs.es.g = 1;
   sregs.es.selector = DS_SELECTOR;
   sregs.es.type = 0x3;
@@ -199,12 +201,19 @@ int main(void) {
   // SS(stack segment) segment values to match CS
   sregs.ss.base = 0;
   sregs.ss.limit = LIMIT;
+  sregs.ss.db = 1;
   sregs.ss.g = 1;
   sregs.ss.selector = DS_SELECTOR;
   sregs.ss.type = 0x3;
   sregs.ss.s = 1;
   sregs.ss.dpl = 0;
   sregs.ss.present = 1;
+
+  // setting the unusable segments to zero for making the gp to work
+  sregs.fs.unusable = 1;
+  sregs.gs.unusable = 1;
+  sregs.tr.unusable = 1;
+  sregs.ldt.unusable = 1;
 
   ioctl(vcpu_fd, KVM_SET_SREGS, &sregs);
   struct kvm_sregs verify;
