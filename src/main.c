@@ -5,7 +5,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#define LIMIT 0xFFFFF
+#define LIMIT 0xFFFFFFFF
 #define GUEST_MEM 0x08000000
 #define GUEST_CODE 0x00100000
 #define INSTRUCTION 0xF4
@@ -212,7 +212,7 @@ int main(void) {
   // setting the unusable segments to zero for making the gp to work
   sregs.fs.unusable = 1;
   sregs.gs.unusable = 1;
-  sregs.tr.unusable = 1;
+  sregs.tr.unusable = 0;
   sregs.ldt.unusable = 1;
 
   ioctl(vcpu_fd, KVM_SET_SREGS, &sregs);
@@ -346,6 +346,10 @@ int main(void) {
   printf("exception.nr       = %u\n", events.exception.nr);
   printf("exception.has_error_code = %u\n", events.exception.has_error_code);
   printf("exception.error_code     = 0x%x\n", events.exception.error_code);
+  if (run->exit_reason == KVM_EXIT_FAIL_ENTRY) {
+    printf("fail_entry.hardware_entry_failure_reason = %llu\n",
+           run->fail_entry.hardware_entry_failure_reason);
+  }
   close(kvm_fd);
   return 0;
 }
