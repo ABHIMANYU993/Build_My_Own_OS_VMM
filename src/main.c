@@ -5,9 +5,9 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#define LIMIT 0xFFFFF
+#define LIMIT 0xFFFFFFFF
 #define GUEST_MEM 0x08000000
-#define GUEST_CODE 0x000F0000
+#define GUEST_CODE 0x00100000
 #define INSTRUCTION 0xF4
 #define GDT_ADDR 0x1000
 #define CS_SELECTOR 0x08
@@ -166,7 +166,7 @@ int main(void) {
 
   // CS(code segment) segment values for making segmentation invisible
   sregs.cs.base = 0;
-  // sregs.cs.g = 1;
+  sregs.cs.g = 1;
   sregs.cs.db = 1;
   sregs.cs.limit = LIMIT;
   sregs.cs.selector = CS_SELECTOR;
@@ -179,7 +179,7 @@ int main(void) {
   sregs.ds.base = 0;
   sregs.ds.limit = LIMIT;
   sregs.ds.db = 1;
-  // sregs.ds.g = 1;
+  sregs.ds.g = 1;
   sregs.ds.selector = DS_SELECTOR;
   sregs.ds.type = 0x3;
   sregs.ds.s = 1;
@@ -191,7 +191,7 @@ int main(void) {
   sregs.es.base = 0;
   sregs.es.limit = LIMIT;
   sregs.es.db = 1;
-  // sregs.es.g = 1;
+  sregs.es.g = 1;
   sregs.es.selector = DS_SELECTOR;
   sregs.es.type = 0x3;
   sregs.es.s = 1;
@@ -202,7 +202,7 @@ int main(void) {
   sregs.ss.base = 0;
   sregs.ss.limit = LIMIT;
   sregs.ss.db = 1;
-  // sregs.ss.g = 1;
+  sregs.ss.g = 1;
   sregs.ss.selector = DS_SELECTOR;
   sregs.ss.type = 0x3;
   sregs.ss.s = 1;
