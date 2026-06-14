@@ -2,16 +2,18 @@
 #include <linux/kvm.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #define LIMIT 0xFFFFFFFF
 #define GUEST_MEM 0x08000000
 #define GUEST_CODE 0x00100000
-#define INSTRUCTION 0xF4
-#define GDT_ADDR 0x1000
+// #define INSTRUCTION 0xF4
+// #define GDT_ADDR 0x1000
 #define CS_SELECTOR 0x08
 #define DS_SELECTOR 0x10
+#define COM1_PORT 0x3F8
 
 int main(void) {
   int kvm_fd = open("/dev/kvm", O_RDWR | O_CLOEXEC);
@@ -315,8 +317,21 @@ int main(void) {
 
   // guest code execution testing
   uint8_t *target_adress = (uint8_t *)guest_ram + GUEST_CODE;
-  *target_adress = INSTRUCTION;
-  printf("Instruction at Guest_phys_add(%p):%x\n", target_adress, INSTRUCTION);
+
+  // Loading ang executing 9 byte instruction
+  uint8_t guest_code[] = {0x66, 0xba, 0xf8, 0x03, 0xb0, 0x41, 0xee, 0xf4};
+  // *target_adress = INSTRUCTION;
+  // copy the guest_code payload to the guest_physical address by using the
+  // target_adress
+  memcpy(target_adress, guest_code, sizeof(guest_code));
+
+  printf("Instruction at Guest_phys_add(%p): ", target_adress);
+
+  for (size_t i = 0; i < sizeof(guest_code); i++) {
+    printf("%02x ", guest_code[i]);
+  }
+
+  printf("\n");
 
   // shared memmory setup for KVM and USERSPACE so low latency and compute is
   // saved for large scale instruction
@@ -327,29 +342,59 @@ int main(void) {
   struct kvm_run *run = mmap(NULL, kvm_shared_space_size,
                              PROT_READ | PROT_WRITE, MAP_SHARED, vcpu_fd, 0);
 
-  int ret = ioctl(vcpu_fd, KVM_RUN, 0);
-  printf("ret = %d\n", ret);
-  struct kvm_regs after;
-  ioctl(vcpu_fd, KVM_GET_REGS, &after);
+  // executing the main loop for vcpu for kvm_run
+  printf("Starting VCPU execution loop...\n");
+  while (1) {
+    if (ioctl(vcpu_fd, KVM_RUN, 0) < 0) {
+      perror("KVM RUN failed");
+      break;
+    }
 
-  printf("RIP after = 0x%llx\n", after.rip);
-  printf("Exit reason = %u\n", run->exit_reason);
-  printf("IO.port      = 0x%x\n", run->io.port);
-  printf("IO.direction = %u\n", run->io.direction);
-  printf("IO.size      = %u\n", run->io.size);
-  printf("IO.count     = %u\n", run->io.count);
+    switch (run->exit_reason) {
+    case KVM_EXIT_HLT:
+      printf("\nGuest HLT\n");
+      return 0;
 
-  struct kvm_vcpu_events events;
-  ioctl(vcpu_fd, KVM_GET_VCPU_EVENTS, &events);
-
-  printf("exception.injected = %u\n", events.exception.injected);
-  printf("exception.nr       = %u\n", events.exception.nr);
-  printf("exception.has_error_code = %u\n", events.exception.has_error_code);
-  printf("exception.error_code     = 0x%x\n", events.exception.error_code);
-  if (run->exit_reason == KVM_EXIT_FAIL_ENTRY) {
-    printf("fail_entry.hardware_entry_failure_reason = %llu\n",
-           run->fail_entry.hardware_entry_failure_reason);
+    case KVM_EXIT_FAIL_ENTRY:
+      printf("\n[VMM] Hardware entry failure: 0x%llx\n",
+             run->fail_entry.hardware_entry_failure_reason);
+      return 1;
+    case KVM_EXIT_IO:
+      if (run->io.direction == 1 && run->io.port == COM1_PORT) {
+        uint8_t *data = (uint8_t *)run + run->io.data_offset;
+        putchar(*data);
+        fflush(stdout);
+        break;
+      default:
+        printf("Unhandled exit %d\n", run->exit_reason);
+        return 1;
+      }
+    }
   }
+
+  // int ret = ioctl(vcpu_fd, KVM_RUN, 0);
+  // printf("ret = %d\n", ret);
+  // struct kvm_regs after;
+  // ioctl(vcpu_fd, KVM_GET_REGS, &after);
+  //
+  // printf("RIP after = 0x%llx\n", after.rip);
+  // printf("Exit reason = %u\n", run->exit_reason);
+  // printf("IO.port      = 0x%x\n", run->io.port);
+  // printf("IO.direction = %u\n", run->io.direction);
+  // printf("IO.size      = %u\n", run->io.size);
+  // printf("IO.count     = %u\n", run->io.count);
+  //
+  // struct kvm_vcpu_events events;
+  // ioctl(vcpu_fd, KVM_GET_VCPU_EVENTS, &events);
+  //
+  // printf("exception.injected = %u\n", events.exception.injected);
+  // printf("exception.nr       = %u\n", events.exception.nr);
+  // printf("exception.has_error_code = %u\n", events.exception.has_error_code);
+  // printf("exception.error_code     = 0x%x\n", events.exception.error_code);
+  // if (run->exit_reason == KVM_EXIT_FAIL_ENTRY) {
+  //   printf("fail_entry.hardware_entry_failure_reason = %llu\n",
+  //          run->fail_entry.hardware_entry_failure_reason);
+  // }
   close(kvm_fd);
   return 0;
 }
